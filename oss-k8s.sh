@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright © 2022-2024, SAS Institute Inc., Cary, NC, USA. All Rights Reserved.
+# Copyright © 2022-2023, SAS Institute Inc., Cary, NC, USA. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # oIFS="$IFS"; IFS=" ," ; set -- $1 ; IFS="$oIFS"
@@ -24,7 +24,7 @@ validated_args=null
 # Determine how the script is being run -- natively or inside a Docker container
 if [[ "$IAC_TOOLING" == "docker" ]]; then
   WORKDIR="/workspace"
-  K8S_TOOL_BASE="/viya4-iac-k8s"
+  K8S_TOOL_BASE="$WORKDIR"  # /viya4-iac-k8s
 else
   WORKDIR="$BASEDIR"
   K8S_TOOL_BASE="$WORKDIR"
@@ -32,7 +32,7 @@ fi
 
 TFVARS="$WORKDIR/terraform.tfvars"
 TFSTATE="$WORKDIR/terraform.tfstate"
-ANSIBLE_INVENTORY="$WORKDIR/inventory"
+ANSIBLE_INVENTORY="$WORKDIR/inventory.yaml"
 ANSIBLE_VARS="@$WORKDIR/ansible-vars.yaml"
 
 # Functions
@@ -273,12 +273,12 @@ for item in "${arguments[@]}"; do
   # setup - Baseline systems
   if [[ "$item" == "setup" ]]; then
     ansible_prep
-    ansible-playbook -i $ANSIBLE_INVENTORY --extra-vars "deployment_type=$SYSTEM" --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/systems-install.yaml --flush-cache --tags install
+    ansible-playbook -i $ANSIBLE_INVENTORY --private-key ~/.ssh/SAS_VM_key -u jumpuser --extra-vars "deployment_type=$SYSTEM" --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/systems-install.yaml --flush-cache --tags install
   fi
   # install - Install kubernetes
   if [[ "$item" == "install" ]]; then
     ansible_prep
-    ansible-playbook -i $ANSIBLE_INVENTORY --extra-vars "deployment_type=$SYSTEM" --extra-vars "iac_tooling=$IAC_TOOLING" --extra-vars "iac_inventory_dir=$WORKDIR" --extra-vars "k8s_tool_base"=$K8S_TOOL_BASE --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/kubernetes-install.yaml --flush-cache --tags install
+    ansible-playbook -i $ANSIBLE_INVENTORY --private-key ~/.ssh/SAS_VM_key -u jumpuser --extra-vars "deployment_type=$SYSTEM" --extra-vars "iac_tooling=$IAC_TOOLING" --extra-vars "iac_inventory_dir=$WORKDIR" --extra-vars "k8s_tool_base"=$K8S_TOOL_BASE --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/kubernetes-install.yaml --flush-cache --tags install
   fi
   # update- Update systems and/or kubernetes
   if [[ "$item" == "update" ]]; then
@@ -287,7 +287,7 @@ for item in "${arguments[@]}"; do
   # uninstall - Uninstall kubernetes
   if [[ "$item" == "uninstall" ]]; then
     ansible_prep
-    ansible-playbook -i $ANSIBLE_INVENTORY --extra-vars "deployment_type=$SYSTEM" --extra-vars "iac_tooling=$IAC_TOOLING" --extra-vars "iac_inventory_dir=$WORKDIR" --extra-vars "k8s_tool_base"=$K8S_TOOL_BASE --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/kubernetes-uninstall.yaml --flush-cache --tags uninstall
+    ansible-playbook -i $ANSIBLE_INVENTORY --private-key ~/.ssh/SAS_VM_key -u jumpuser --extra-vars "deployment_type=$SYSTEM" --extra-vars "iac_tooling=$IAC_TOOLING" --extra-vars "iac_inventory_dir=$WORKDIR" --extra-vars "k8s_tool_base"=$K8S_TOOL_BASE --extra-vars $ANSIBLE_VARS $BASEDIR/playbooks/kubernetes-uninstall.yaml --flush-cache --tags uninstall
     rm -rf *-oss-kubeconfig.conf 2>&1 > /dev/null
     rm -rf sas-iac-buildinfo-cm.yaml 2>&1 > /dev/null
   fi

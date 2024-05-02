@@ -1,4 +1,4 @@
-# Copyright © 2022-2024, SAS Institute Inc., Cary, NC, USA. All Rights Reserved.
+# Copyright © 2022-2023, SAS Institute Inc., Cary, NC, USA. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 #
@@ -97,7 +97,7 @@ variable "dns_servers" {
 variable "inventory" {
   type        = string
   description = "File name and location of the generated inventory file"
-  default     = "inventory"
+  default     = "inventory.yaml"
 }
 
 variable "ansible_vars" {
@@ -246,12 +246,12 @@ variable "postgres_server_defaults" {
     server_memory            = 16384                   # 16 GiB
     server_disk_size         = 250                     # 250 GiB
     server_ip                = ""                      # Assigned values for static IPs
-    server_version           = 15                      # PostgreSQL version
+    server_version           = 13                      # PostgreSQL version
     server_ssl               = "off"                   # SSL flag
     server_ssl_cert_file     = ""                      # PostgreSQL SSL certificate file
     server_ssl_key_file      = ""                      # PostgreSQL SSL key file
     administrator_login      = "postgres"              # PostgreSQL admin user - CANNOT BE CHANGED
-    administrator_password   = "my$up3rS3cretPassw0rd" # PostgreSQL admin user password
+    administrator_password   = "jumpuser" # PostgreSQL admin user password
     postgres_system_settings = [{ name = "max_prepared_transactions", value = "1024" }, { name = "max_connections", value = "1024" }]
   }
 }
@@ -297,7 +297,7 @@ variable "cluster_domain" {
 
 variable "cluster_version" {
   type    = string
-  default = "1.28.7"
+  default = "1.28.8"
 }
 
 variable "cluster_cni" {
@@ -307,7 +307,7 @@ variable "cluster_cni" {
 
 variable "cluster_cni_version" {
   type    = string
-  default = "3.27.2"
+  default = "3.27.0"
 }
 
 variable "cluster_cri" {
@@ -317,7 +317,7 @@ variable "cluster_cri" {
 
 variable "cluster_cri_version" {
   type    = string
-  default = "1.6.28"
+  default = "1.6.26"
 }
 
 variable "cluster_service_subnet" {
@@ -332,7 +332,7 @@ variable "cluster_pod_subnet" {
 
 variable "cluster_vip_version" {
   type    = string
-  default = "0.7.1"
+  default = "0.5.7"
 }
 
 variable "cluster_vip_ip" {

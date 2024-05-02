@@ -1,0 +1,62 @@
+k8s_control_plane:
+  hosts:
+    sas-viya-4-cp1:
+      ansible_host: 192.168.50.163
+    sas-viya-4-cp2:
+      ansible_host: 192.168.50.164
+    sas-viya-4-cp3:
+      ansible_host: 192.168.50.165
+k8s_node:
+  hosts:
+    sas-viya-4-system:
+      ansible_host: 192.168.50.166
+    sas-viya-4-cas:
+      ansible_host: 192.168.50.167
+    sas-viya-4-compute:
+      ansible_host: 192.168.50.168
+    sas-viya-4-stateful:
+      ansible_host: 192.168.50.169
+    sas-viya-4-stateless:
+      ansible_host: 192.168.50.170
+k8s:
+  children:
+    k8s_control_plane:
+    k8s_node:
+jump_server:
+  hosts:
+    sas-viya-4-jump:
+      ansible_host: 192.168.50.161
+jump:
+  children:
+    jump_server:
+
+nfs_server:
+  hosts:
+    sas-viya-4-nfs:
+      ansible_host: 192.168.50.162
+nfs:
+  children:
+    nfs_server:
+postgres_server:
+  hosts:
+    sas-viya-4-postgres:
+      ansible_host: 192.168.50.175
+  vars:
+    postgres_server_ip: 192.168.50.175
+    postgres_server_name: "sas-viya-4-postgres"
+    postgres_server_version:  "15"
+    postgres_server_ssl:  "on" # NOTE: Values - [on,off]
+    postgres_administrator_login:  "postgres" # NOTE: Do not change this value at this time
+    postgres_administrator_password:  "jumpuser"
+    postgres_system_setting_max_prepared_transactions:  "1024"
+    postgres_system_setting_max_connections:  "1024"
+postgres:
+  children:
+    postgres_server:
+all:
+  children:
+    k8s:
+    jump:
+    nfs:
+    cr:
+    postgres:
