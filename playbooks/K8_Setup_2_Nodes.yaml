@@ -1,6 +1,6 @@
 ---
 # All kubernetes nodes
-- hosts: k8s_control_plane[1:] # k8s
+- hosts:  k8s
   name: Kubernetes Setup - Nodes
   become: true
   become_user: root

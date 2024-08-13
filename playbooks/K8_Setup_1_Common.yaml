@@ -1,6 +1,6 @@
 ---
 # All systems
-- hosts: k8s_control_plane[0] # all
+- hosts: all
   name: Kubernetes Setup - Common
   become: true
   become_user: root

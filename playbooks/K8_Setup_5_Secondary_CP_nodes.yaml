@@ -72,23 +72,23 @@
     - name: Join secondary control plane nodes to the cluster
       ansible.builtin.command: "{{ kubeadm_join_cmd.stdout }} --control-plane"
 
-ssh 10.0.0.220
-# if needed, run upload certs again.  Only last 2 hours
-kubeadm init phase upload-certs --upload-certs
-kubeadm token create --print-join-command
-# # copy results of each into join statement below
-exit
-# join CP2 to the cluster
-ssh 10.0.0.221
-sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
-        --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
-        --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
-exit
-ssh 10.0.0.222
-sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
-        --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
-        --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
-exit
+# ssh 10.0.0.220
+# # if needed, run upload certs again.  Only last 2 hours
+# kubeadm init phase upload-certs --upload-certs
+# kubeadm token create --print-join-command
+# # # copy results of each into join statement below
+# exit
+# # join CP2 to the cluster
+# ssh 10.0.0.221
+# sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
+#         --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
+#         --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
+# exit
+# ssh 10.0.0.222
+# sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
+#         --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
+#         --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
+# exit
 
 
   # roles/kubernetes/vip/secondary/tasks/main.yaml
@@ -98,7 +98,7 @@ exit
         dest: /etc/kubernetes/manifests/kube-vip.yaml
       delegate_to: "{{ groups['k8s_control_plane'][0] }}"
 
-ssh 10.0.0.220
-scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.221:/etc/kubernetes/manifests/kube-vip.yaml
-scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.222:/etc/kubernetes/manifests/kube-vip.yaml
-exit
+# ssh 10.0.0.220
+# scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.221:/etc/kubernetes/manifests/kube-vip.yaml
+# scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.222:/etc/kubernetes/manifests/kube-vip.yaml
+# exit

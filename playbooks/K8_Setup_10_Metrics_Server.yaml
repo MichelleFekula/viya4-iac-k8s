@@ -11,22 +11,11 @@
     METRICS_SERVER_CONFIG:
       apiService:
         create: true
-      serviceAccount:
-        create: true
-      rbac:
-        create: true
-      defaultArgs:
-        - --kubelet-insecure-tls
-        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname,InternalDNS,ExternalDNS
-        - --kubelet-use-node-status-port
-        - --requestheader-allowed-names=aggregator
-        - --metric-resolution=15s
-        - --cert-dir=/tmp
       service:
         labels:
           kubernetes.io/cluster-service: "true"
           kubernetes.io/name: "Metrics-server"
-      replicas: 3
+      replicas: 3  
 
   tasks:
   # roles/kubernetes/metrics/metrics-server/tasks/main.yaml
@@ -40,3 +29,13 @@
         values: "{{ METRICS_SERVER_CONFIG }}"
         kubeconfig: "{{ kube_config }}"
         wait: true
+
+  # remove Metrics Server
+    # - name: Remove metrics-server
+    #   kubernetes.core.helm:
+    #     name: "{{ METRICS_SERVER_NAME }}"
+    #     namespace: "kube-system"
+    #     values: "{{ METRICS_SERVER_CONFIG }}"
+    #     kubeconfig: "{{ kube_config }}"
+    #     state: absent
+    #     wait: true

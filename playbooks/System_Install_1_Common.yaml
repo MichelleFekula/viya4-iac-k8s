@@ -1,6 +1,6 @@
 ---
 # Tasks that run on all nodes for initialization and common tasks
-- hosts: k8s_control_plane[1:] # k8s
+- hosts: k8s
   become: true
   become_user: root
   vars_files:
@@ -51,17 +51,17 @@
         state: present
       with_fileglob: "{{ system_ssh_keys_dir }}/{{ system_ssh_key }}.pub"
     
-    - name: Disable and turn off unattended-upgrades
-      ansible.builtin.systemd:
-        name: unattended-upgrades.service
-        enabled: false
-        state: stopped
-      ignore_errors: true
+    # - name: Disable and turn off unattended-upgrades
+    #   ansible.builtin.systemd:
+    #     name: unattended-upgrades.service
+    #     enabled: false
+    #     state: stopped
+    #   ignore_errors: true
 
-    - name: Kill the unattended-upgrade task if it's running
-      ansible.builtin.shell: |
-        killall -q -9 unattended-upgrade 2>&1 /dev/null
-      ignore_errors: true
+    # - name: Kill the unattended-upgrade task if it's running
+    #   ansible.builtin.shell: |
+    #     killall -q -9 unattended-upgrade 2>&1 /dev/null
+    #   ignore_errors: true
 
     - name: Uninstalling unattended-upgrades
       ansible.builtin.apt:

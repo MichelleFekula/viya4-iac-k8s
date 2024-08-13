@@ -1,6 +1,6 @@
 ---
 # Tasks that run on all nodes for initialization and common tasks
-- hosts: k8s_control_plane[1:] # k8s_control_plane
+- hosts: k8s_control_plane
   become: true
   become_user: root
   vars_files:
