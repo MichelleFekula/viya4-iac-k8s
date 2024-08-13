@@ -1,0 +1,14 @@
+---
+# Tasks that run on all nodes for initialization and common tasks
+- hosts: k8s_node
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  
+  tasks:
+  # roles/systems/node/tasks/main.yaml
+    - name: Install nfs-common for nfs-subdir-external-provisioner
+      ansible.builtin.package:
+        name: nfs-common
+        state: latest

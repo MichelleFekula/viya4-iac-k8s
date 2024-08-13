@@ -1,0 +1,95 @@
+---
+# Tasks that run on all nodes for initialization and common tasks
+- hosts: k8s_control_plane[1:] # k8s
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  
+  tasks:
+  # roles/systems/bare_metal/init/tasks/main
+    - name: Set owner and group for Ubuntu OS
+      ansible.builtin.set_fact:
+        owner: nobody
+        group: nogroup
+
+    - name: Create /mnt/sas/volumes directory
+      ansible.builtin.file:
+        path: /mnt/sas/volumes
+        state: directory
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "0777"
+      ignore_errors: true
+
+    - name: Copy link creation script
+      ansible.builtin.copy:
+        src: ./systems/link_devs.sh
+        dest: /tmp/link_devs.sh
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Run link creation script
+      ansible.builtin.shell: |
+        /tmp/link_devs.sh
+    
+  # roles/systems/common/tasks/main
+    # SSH keys assign to the 'root' user on your systems
+    - name: Add ssh keys - root user
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ lookup('file', '{{item}}') }}"
+        state: present
+      with_fileglob: "{{ system_ssh_keys_dir }}/{{ system_ssh_key }}.pub"
+    
+    # SSH keys assign to the 'OS' user on your systems
+    - name: Add ssh keys - OS user
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ lookup('file', '{{item}}') }}"
+        state: present
+      with_fileglob: "{{ system_ssh_keys_dir }}/{{ system_ssh_key }}.pub"
+    
+    - name: Disable and turn off unattended-upgrades
+      ansible.builtin.systemd:
+        name: unattended-upgrades.service
+        enabled: false
+        state: stopped
+      ignore_errors: true
+
+    - name: Kill the unattended-upgrade task if it's running
+      ansible.builtin.shell: |
+        killall -q -9 unattended-upgrade 2>&1 /dev/null
+      ignore_errors: true
+
+    - name: Uninstalling unattended-upgrades
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: absent
+        purge: true
+    
+    - name: Update OS
+      ansible.builtin.package:
+        name: '*'
+        state: latest
+        update_cache: true
+    
+    - name: Install Python and PIP packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - python3
+        - python3-dev
+        - python3-pip
+
+    - name: Update alternatives for Python and PIP
+      ansible.builtin.shell: |
+        update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+        update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+    - name: Turn off swap
+      ansible.builtin.shell: |
+        swapoff -a
+        sed -i '/swap/d' /etc/fstab

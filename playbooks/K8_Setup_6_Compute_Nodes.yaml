@@ -1,0 +1,46 @@
+- hosts: k8s_node
+  name: Kubernetes Setup - Compute Nodes
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+
+  tasks:
+  # roles/kubernetes/node/baseline/tasks/main.yaml
+    - name: Install nfs-common for nfs-subdir-external-provisioner
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - nfs-common
+
+    - name: Start rpc-statd
+      ansible.builtin.systemd:
+        name: rpc-statd.service
+        enabled: true
+        state: started
+
+    - name: Set owner and group for Ubuntu OS
+      ansible.builtin.set_fact:
+        owner: nobody
+        group: nogroup
+
+    - name: Create /mnt/sas/volumes directory
+      ansible.builtin.file:
+        path: /mnt/sas/volumes
+        state: directory
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "0777"
+      ignore_errors: true
+
+  # roles/kubernetes/node/init/tasks/main.yaml
+    # - name: Generate compute node join command
+    #   ansible.builtin.command: kubeadm token create --print-join-command
+    #   register: kubeadm_join_cmd
+    #   delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+
+    - name: Join compute nodes to the cluster
+      ansible.builtin.shell: |
+        kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
+                --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082

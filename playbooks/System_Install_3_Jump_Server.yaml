@@ -1,0 +1,62 @@
+---
+# Tasks that run on all nodes for initialization and common tasks
+- hosts: jump
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  
+  tasks:
+  # roles/systems/jump_server/tasks/main.yaml
+
+    - name: Set owner and group for Ubuntu OS
+      ansible.builtin.set_fact:
+        owner: nobody
+        group: nogroup
+
+    - name: Install nfs-common package
+      ansible.builtin.package:
+        name: nfs-common
+        state: present
+
+    - name: Create mount point NFS_DIRECTORY
+      ansible.builtin.file:
+        dest: "{{ NFS_DIRECTORY }}"
+        state: directory
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "0777"
+
+    - name: Create mount point /srv/nfs/kubernetes/sc/default
+      ansible.builtin.file:
+        dest: /srv/nfs/kubernetes/sc/default
+        state: directory
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "0777"
+
+# nfs directory is already mounted to jump server, if not, uncomment below
+
+    # - name: Test for fstab entry
+    #   ansible.builtin.shell: grep -c "{{ nfs_ip }}" /etc/fstab || true
+    #   register: fstab_file_rc
+
+    # - name: Add entry to /etc/fstab - new entrys
+    #   ansible.builtin.lineinfile:
+    #     path: /etc/fstab
+    #     line: "{{ item }}"
+    #   when: fstab_file_rc.stdout == "0"
+    #   with_items:
+    #     - "{{ nfs_ip }}:/export    {{ NFS_DIRECTORY }}    nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0"
+    #     - "{{ nfs_ip }}:/srv/nfs/kubernetes/sc/default    /srv/nfs/kubernetes/sc/default    nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0"
+
+    # - name: Mount NFS_DIRECTORY # noqa: command-instead-of-module
+    #   ansible.builtin.command: mount -a
+
+    - name: Create directory for sas storage class
+      ansible.builtin.file:
+        path: "{{ NFS_DIRECTORY }}/pvs"
+        owner: "{{ owner }}"
+        group: "{{ group }}"
+        mode: "0777"
+        state: directory

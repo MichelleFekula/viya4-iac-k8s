@@ -1,0 +1,87 @@
+- hosts: k8s
+  name: Kubernetes Setup - Labels and Taints
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  tasks:
+  
+  tasks:
+    - name: Set CAS controller taints
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ cas_controller_taints }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'cascontroller'
+
+    - name: Set CAS worker taints
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ cas_worker_taints }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'casworker'
+
+    - name: Set compute taints
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ compute_node_taints }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'compute'
+
+    - name: Set stateful taints
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ stateful_node_taints }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'stateful'
+
+    - name: Set stateless taints
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf taint nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ stateless_node_taints }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'stateless'
+
+    - name: Set CAS controller labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ cas_controller_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'cascontroller'
+
+    - name: Set CAS worker labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ cas_worker_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'casworker'
+
+    - name: Set compute labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ compute_node_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'compute'
+
+    - name: Set stateful labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ stateful_node_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'stateful'
+
+    - name: Set stateless labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ stateless_node_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'stateless'
+
+    - name: Set system labels
+      ansible.builtin.shell: |
+        kubectl --kubeconfig /etc/kubernetes/admin.conf label nodes {{ ansible_hostname }} {{ item }} --overwrite
+      loop: "{{ system_node_labels }}"
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      when: sas_type == 'system'
+
+

@@ -1,0 +1,28 @@
+---
+# Clean up toolbox items
+- hosts: k8s
+  name: Kubernetes Uninstall - Toolbox Items
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+
+  tasks:
+  # roles/kubernetes/toolbox/tasks/main.yaml
+    - name: Mark the packages to purge as we control the version ;)
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: purge
+      with_items:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Update apt package index and remove kubelet, kubeadm, kubectl
+      ansible.builtin.apt:
+        pkg:
+          - kubelet={{ kubernetes_version }}-{{ kube_deb_rev }}
+          - kubeadm={{ kubernetes_version }}-{{ kube_deb_rev }}
+          - kubectl={{ kubernetes_version }}-{{ kube_deb_rev }}
+        state: absent
+        update_cache: true

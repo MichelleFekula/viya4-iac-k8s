@@ -1,0 +1,27 @@
+---
+# Tasks that run on all nodes for initialization and common tasks
+- hosts: k8s_control_plane[1:] # k8s_control_plane
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  
+  tasks:
+    # roles/systems/control_plane/tasks/main.yaml
+    - name: Generate control plane shared ssh key pair
+      ansible.builtin.command: "{{ item }}"
+      with_items:
+        - rm -rf {{ system_ssh_keys_dir }}/{{ control_plane_ssh_key_name }}
+        - ssh-keygen -t rsa -q -N '' -b 4096 -f {{ system_ssh_keys_dir }}/{{ control_plane_ssh_key_name }}
+
+    - name: Get the ssh key file content
+      ansible.builtin.command:
+        cat {{ system_ssh_keys_dir }}/{{ control_plane_ssh_key_name }}.pub
+      register: ssh_key
+
+    # Copy over public keys to enable file transfers between control plane nodes on your systems
+    - name: Add ssh keys for control plane nodes
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ ssh_key.stdout }}"
+        state: present

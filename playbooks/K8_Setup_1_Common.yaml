@@ -1,0 +1,135 @@
+---
+# All systems
+- hosts: k8s_control_plane[0] # all
+  name: Kubernetes Setup - Common
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  tasks:
+  # roles/kubernetes/common/tasks/main.yaml
+    - name: Add ssh keys - root user
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ lookup('file', '{{item}}') }}"
+        state: present
+      with_fileglob: "{{ system_ssh_keys_dir }}/{{ system_ssh_key }}.pub"
+
+    - name: Add ssh keys - OS user
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ lookup('file', '{{item}}') }}"
+        state: present
+      with_fileglob: "{{ system_ssh_keys_dir }}/{{ system_ssh_key }}.pub"
+
+    - name: Update OS
+      ansible.builtin.package:
+        name: '*'
+        state: latest
+        update_cache: true # Proxied command for apt : apt-get update
+
+    - name: Enable cgroup v2 # https://rootlesscontaine.rs/getting-started/common/cgroup2/#enabling-cgroup-v2
+      vars:
+        option: systemd.unified_cgroup_hierarchy
+        value: "1"
+      block:
+        - name: Retrieve contents of /etc/default/grub
+          ansible.builtin.command: cat /etc/default/grub
+          register: grub_content
+          changed_when: false
+
+        - name: Retrieve existing GRUB_CMDLINE_LINUX options, if any
+          set_fact:
+            grub_cmdline_original: "{{ grub_content.stdout | regex_search('^GRUB_CMDLINE_LINUX=\"([^\"]*)\"$', '\\1', multiline=True) }}"
+
+        - name: Set {{ option }}={{ value }} if option previously disabled
+          set_fact:
+            grub_cmdline_updated: "{{ grub_cmdline_original.0 | default('') | replace(option + '=0', option + '=' + value) }}"
+
+        - name: Adding {{ option }}={{ value }} if option not present
+          set_fact:
+            grub_cmdline_updated: '{{ (grub_cmdline_updated + " " + option + "=" + value) | trim }}'
+          when: 'option not in grub_cmdline_updated'
+
+        - name: Adding updated GRUB_CMDLINE_LINUX to /etc/default/grub file
+          ansible.builtin.lineinfile:
+            path: /etc/default/grub
+            regexp: '^GRUB_CMDLINE_LINUX='
+            line: 'GRUB_CMDLINE_LINUX="{{ grub_cmdline_updated }}"'
+            owner: root
+            group: root
+            mode: "0644"
+
+        - name: Update GRUB
+          ansible.builtin.command: update-grub
+
+    - name: Enable CPU, CPUSET, and I/O delegation for non-root users
+      block:
+        - name: Run mkdir for user@.service.d
+          ansible.builtin.file:
+            path: /etc/systemd/system/user@.service.d
+            state: directory
+            mode: '0755'
+        - name: Adding delegation
+          ansible.builtin.copy:
+            dest: /etc/systemd/system/user@.service.d/delegate.conf
+            content: |
+              [Service]
+              Delegate=cpu cpuset io memory pids
+
+    - name: Install required packages for every machine
+      ansible.builtin.package:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - sshpass
+
+    - name: Download helm installation script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3
+        validate_certs: false
+        mode: "0755"
+
+    - name: Execute helm installation script
+      ansible.builtin.command: /tmp/get-helm-3 --version v{{ helm_version }} --no-sudo
+
+    - name: Update limits to support SAS software
+      ansible.builtin.lineinfile:
+        path: /etc/security/limits.conf
+        insertbefore: '^# End of file'
+        line: "{{ item }}"
+      with_items:
+        - ''
+        - '* soft     nproc          65535'
+        - '* hard     nproc          65535'
+        - '* soft     nofile         65535'
+        - '* hard     nofile         65535'
+        - 'root soft     nproc          65535'
+        - 'root hard     nproc          65535'
+        - 'root soft     nofile         65535'
+        - 'root hard     nofile         65535'
+        - ''
+
+    - name: Allow all to bind to nfs mounts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts.allow
+        line: 'rpcbind : ALL'
+
+    # - name: Ensure the correct hostname is set in cloud-init file
+    #   ansible.builtin.lineinfile:
+    #     path: /var/lib/cloud/instances/11ffc58f-bfeb-c4c8-e9f4-15d5f7aae625/cloud-config.txt
+    #     regexp: '^- echo jumpuser-$(openssl rand -hex 3) > /etc/hostname'
+    #     line: "- echo {{ ansible_hostname }} > /etc/hostname"
+    #     backup: yes
+    #   when: inventory_hostname in groups["k8s"]
+
+    # - name: Reapply cloud-init configuration
+    #   ansible.builtin.command:
+    #     cmd: cloud-init clean && cloud-init init && cloud-init modules --mode=config
+    #   when: inventory_hostname in groups["k8s"]
+
+    - name: Reboot machines to enable added items like cgroup for cri, etc.
+      ansible.builtin.reboot:
+      when: inventory_hostname in groups["k8s"]

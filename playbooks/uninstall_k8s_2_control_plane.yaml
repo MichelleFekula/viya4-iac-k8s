@@ -1,0 +1,30 @@
+---
+# Remove Control planes from k8 cluster
+- hosts: k8s_control_plane
+  name: Kubernetes Uninstall - Control Plane
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+  tasks:
+  # roles/kubernetes/control_plane/removal/tasks/main.yaml
+    - name: Resetting cluster
+      ansible.builtin.shell: |
+        kubeadm reset --force
+
+    - name: Delete kube-vip yaml file
+      ansible.builtin.file:
+        path: /etc/kubernetes/manifests/kube-vip.yaml
+        state: absent
+
+    - name: Delete cni/net.d directory
+      ansible.builtin.file:
+        path: /etc/cni/net.d
+        state: absent
+        force: yes
+    
+    - name: Delete kube config file
+      ansible.builtin.file:
+        path: /home/jumpuser/.kube/config
+        state: absent
+

@@ -1,0 +1,96 @@
+- hosts: localhost
+  name: Default Storage Class Setup
+  vars_files:
+    - ../ansible-vars.yaml
+  vars:
+    LOCAL_VOLUME_NAME: sig-storage-local-static-provisioner-sas
+    LOCAL_VOLUME_NAMESPACE: kube-system
+    LOCAL_VOLUME_CHART_NAME: Chart.yaml
+    LOCAL_VOLUME_REPO: https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner.git
+    LOCAL_VOLUME_CHART_VERSION: 2.6.0
+    LOCAL_VOLUME_REPO_VERSION: "v{{ LOCAL_VOLUME_CHART_VERSION }}"
+    LOCAL_VOLUME_REPO_LOCATION: "/tmp/{{ LOCAL_VOLUME_NAME }}"
+    LOCAL_VOLUME_CONFIG:
+      common:
+        serviceAccount:
+          create: true
+      classes:
+        - name: local-storage
+          hostDir: /mnt/sas/volumes
+          volumeMode: Filesystem
+          fsType: xfs
+          namePattern: "*"
+          blockCleanerCommand:
+            - "/scripts/quick_reset.sh"
+          storageClass: true
+      daemonset:
+        tolerations:
+          - effect: NoSchedule
+            key: workload.sas.com/class
+            operator: Equal
+            value: cas
+          - effect: NoSchedule
+            key: workload.sas.com/class
+            operator: Equal
+            value: stateless
+          - effect: NoSchedule
+            key: workload.sas.com/class
+            operator: Equal
+            value: stateful
+          - effect: NoSchedule
+            key: workload.sas.com/class
+            operator: Equal
+            value: singlestore
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - preference:
+                  matchExpressions:
+                    - key: workload.sas.com/class
+                      operator: In
+                      values:
+                        - stateful
+                        - stateless
+                        - cas
+                        - singlestore
+                  matchFields: []
+                weight: 100
+              - preference:
+                  matchExpressions:
+                    - key: workload.sas.com/class
+                      operator: NotIn
+                      values:
+                        - compute
+                  matchFields: []
+                weight: 50
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.azure.com/mode
+                      operator: NotIn
+                      values:
+                        - system
+                  matchFields: []
+  tasks:
+    # roles/kubernetes/storage/sig-storage-local-static-provisioner/tasks/main.yaml
+    - name: Cleaning up old sig-storage-local-static-provisioner repo
+      ansible.builtin.file:
+        path: "/tmp/{{ LOCAL_VOLUME_NAME }}"
+        state: absent
+
+    - name: Cloning sig-storage-local-static-provisioner
+      ansible.builtin.git:
+        repo: "{{ LOCAL_VOLUME_REPO }}"
+        dest: "/tmp/{{ LOCAL_VOLUME_NAME }}"
+        version: "{{ LOCAL_VOLUME_REPO_VERSION }}"
+
+    - name: Setting up local storage for the cluster using sig-storage-local-static-provisioner
+      kubernetes.core.helm:
+        name: "{{ LOCAL_VOLUME_NAME }}"
+        namespace: "{{ LOCAL_VOLUME_NAMESPACE }}"
+        chart_ref: "{{ LOCAL_VOLUME_REPO_LOCATION }}/helm/provisioner"
+        chart_version: "{{ LOCAL_VOLUME_CHART_VERSION }}"
+        values: "{{ LOCAL_VOLUME_CONFIG }}"
+        kubeconfig: "{{ kube_config }}"
+        create_namespace: true
+        wait: true

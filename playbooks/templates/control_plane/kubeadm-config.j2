@@ -1,17 +1,11 @@
 ---
-#
-# TODO: Review all items here for actual need
-#       with bare metal/vm installations.
+# TODO: Review all items here for actual need with bare metal/vm installations.
 #
 # Resource Links: https://kubernetes.io/docs/reference/config-api/
 #
 # kubeadm Configuration : https://kubernetes.io/docs/reference/config-api/kubeadm-config.v1beta2/
 #
-{% if kubernetes_version is version('1.26.0', 'lt', version_type='semver') %}
-apiVersion: kubeadm.k8s.io/v1beta2
-{% else %}
 apiVersion: kubeadm.k8s.io/v1beta3
-{% endif %}
 kind: ClusterConfiguration
 certificatesDir: /etc/kubernetes/pki
 kubernetesVersion: v{{ kubernetes_version }}
@@ -19,13 +13,12 @@ apiServer:
   certSANs:
   - "{{ kubernetes_vip_fqdn }}"
   - "{{ kubernetes_vip_ip }}"
-{% for cp_host in groups["k8s_control_plane"] %}
-  - "{{hostvars[cp_host]['ansible_fqdn']}}"
+{% for host in groups['k8s_control_plane'] %}
+  - "{{ hostvars[host]['ansible_host'] }}"
 {% endfor %}
   - localhost
   extraArgs:
-    # NOTE: enable-aggregator-routing was added
-    #       for metrics-server. Need to verify
+    # NOTE: enable-aggregator-routing was added for metrics-server. Need to verify
     authorization-mode: Node,RBAC
     enable-aggregator-routing: "true"
 controlPlaneEndpoint: "{{ kubernetes_vip_fqdn }}:6443"

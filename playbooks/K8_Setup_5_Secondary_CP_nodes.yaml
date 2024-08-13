@@ -1,0 +1,104 @@
+- hosts: k8s_control_plane[1:]
+  name: Kubernetes Setup - Secondary Control Plane Nodes
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+
+  tasks:
+  # roles/kubernetes/control_plane/init/secondary/tasks/main.yaml
+    - name: Create kubernetes /etc/kubernetes/pki directory
+      ansible.builtin.file:
+        path: /etc/kubernetes/{{ item }}
+        state: directory
+        mode: "0755"
+        owner: root
+        group: root
+      with_items:
+        - pki
+        - pki/etcd
+    
+# ssh 10.0.0.221
+# sudo mkdir /etc/kubernetes/pki
+# sudo mkdir /etc/kubernetes/pki/etcd
+# sudo chown -R jumpuser:sudo /etc/kubernetes/
+# exit
+# ssh 10.0.0.222
+# sudo mkdir /etc/kubernetes/pki
+# sudo mkdir /etc/kubernetes/pki/etcd
+# sudo chown -R jumpuser:sudo /etc/kubernetes/
+# exit
+
+    - name: Copy Kubernetes primary control plane PKI files to secondary control plane k8s_nodes
+      ansible.posix.synchronize:
+        src: /etc/kubernetes/pki/{{ item }}
+        dest: /etc/kubernetes/pki/{{ item }}
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+      with_items:
+        - ca.crt
+        - ca.key
+        - sa.key
+        - sa.pub
+        - front-proxy-ca.crt
+        - front-proxy-ca.key
+        - etcd/ca.crt
+        - etcd/ca.key
+
+# ssh 10.0.0.220
+# sudo chown -R jumpuser:sudo /etc/kubernetes/
+# scp /etc/kubernetes/pki/ca.crt 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/ca.key 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/sa.key 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/sa.pub 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/front-proxy-ca.crt 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/front-proxy-ca.key 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/etcd/ca.crt 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/etcd/ca.key 10.0.0.221:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/ca.crt 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/ca.key 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/sa.key 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/sa.pub 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/front-proxy-ca.crt 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/front-proxy-ca.key 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/etcd/ca.crt 10.0.0.222:/etc/kubernetes/pki/
+# scp /etc/kubernetes/pki/etcd/ca.key 10.0.0.222:/etc/kubernetes/pki/
+# exit
+
+    - name: Generate control plane join command
+      ansible.builtin.command: kubeadm token create --print-join-command
+      register: kubeadm_join_cmd
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+
+    - name: Join secondary control plane nodes to the cluster
+      ansible.builtin.command: "{{ kubeadm_join_cmd.stdout }} --control-plane"
+
+ssh 10.0.0.220
+# if needed, run upload certs again.  Only last 2 hours
+kubeadm init phase upload-certs --upload-certs
+kubeadm token create --print-join-command
+# # copy results of each into join statement below
+exit
+# join CP2 to the cluster
+ssh 10.0.0.221
+sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
+        --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
+        --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
+exit
+ssh 10.0.0.222
+sudo kubeadm join 10.0.0.238:6443 --token lan712.dd0eh8im7i30lvy4 \
+        --discovery-token-ca-cert-hash sha256:544eed5f776894775e63a143fea0514efe137363997c1ede5d075d72227c3082 \
+        --control-plane --certificate-key 59f62beec25f287806a156affec64837889de6c46a20d34a83ea0319441dd3f1 
+exit
+
+
+  # roles/kubernetes/vip/secondary/tasks/main.yaml
+    - name: Copy kube-vip manifest to secondary control planes
+      ansible.posix.synchronize:
+        src: /etc/kubernetes/manifests/kube-vip.yaml
+        dest: /etc/kubernetes/manifests/kube-vip.yaml
+      delegate_to: "{{ groups['k8s_control_plane'][0] }}"
+
+ssh 10.0.0.220
+scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.221:/etc/kubernetes/manifests/kube-vip.yaml
+scp /etc/kubernetes/manifests/kube-vip.yaml 10.0.0.222:/etc/kubernetes/manifests/kube-vip.yaml
+exit

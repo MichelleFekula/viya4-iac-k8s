@@ -1,0 +1,44 @@
+- hosts:  k8s_control_plane[0]
+  name: Kubernetes Setup - Load Balancer
+  become: true
+  become_user: root
+  vars_files:
+    - ../ansible-vars.yaml
+
+  tasks:
+  # roles/kubernetes/loadbalancer/kube_vip/tasks/main.yaml
+    - name: Setting up kube-vip loadbalancer
+      block:
+        - name: Install kube-vip Cloud Provider
+          ansible.builtin.shell: |
+            kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/v{{ kube_vip_cloud_provider_version }}/manifest/kube-vip-cloud-controller.yaml
+
+# ssh 10.0.0.220
+# kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/v0.0.9/manifest/kube-vip-cloud-controller.yaml
+
+        - name: Create kube-vip Cloud Provider configMap file
+          ansible.builtin.template:
+            src: "./templates/kube-vip/{{ item }}.tmpl"
+            dest: "/tmp/{{ item }}.yaml"
+            mode: '0600'
+          with_items:
+            - kube-vip-cm
+
+# sudo tee /tmp/kube-vip-cm.yaml <<EOF
+# # Reference Link: https://kube-vip.io/docs/usage/cloud-provider/#the-kube-vip-cloud-provider-configmap
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: kubevip
+#   namespace: kube-system
+# data: 
+#   cidr-global: 10.0.0.239-10.0.0.248
+# EOF
+# sudo chmod 0600 /tmp/kube-vip-cm.yaml
+
+        - name: Apply kube-vip Cloud Provider configMap
+          ansible.builtin.shell: |
+            kubectl apply -f /tmp/kube-vip-cm.yaml
+
+# kubectl apply -f /tmp/kube-vip-cm.yaml
+# exit
